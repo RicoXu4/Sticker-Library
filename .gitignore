@@ -16,3 +16,4 @@ venv/
 # Uploads
 static/uploads/*
 tests/*
+db.sqlite
