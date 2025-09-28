@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sticker Library</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .card {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .card-image {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .card-image img {
+            max-height: 200px;
+            width: auto;
+            object-fit: contain;
+        }
+        .card-content {
+            max-height: 100px;
+            overflow-y: auto;
+            /* overflow: hidden; */
+            /* text-overflow: ellipsis; */
+            /* display: -webkit-box; */
+            /* -webkit-line-clamp: 4; */
+            /* -webkit-box-orient: vertical; */
+            word-wrap: break-word;
+        }
+        .action-btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: nowrap;
+        }
+        #list-view table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #list-view th, #list-view td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #ddd;
+            vertical-align: middle;
+        }
+        #list-view img {
+            max-height: 60px;
+            width: auto;
+        }
+        .btn-flat.active {
+            color: #1976d2 !important;
+            border-bottom: 2px solid #1976d2;
+            font-weight: bold;
+        }
+        .modal {
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            padding: 1rem;
+            border-radius: 8px;
+            position: relative;
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+        .modal-close-button:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="center-align">Upload stickers</h1>
+        <div class="center-align" style="margin-bottom: 1rem;">
+            <a href="/"
+               class="btn waves-effect waves-light tooltipped"
+               data-position="bottom"
+               data-tooltip="Home">
+                <i class="material-icons">home</i>
+            </a>
+        </div>
+
+        <!-- Upload form with drag-and-drop support -->
+        {% if not query %}
+        <div id="drop-zone" class="row"
+            style="border: 2px dashed #90caf9; border-radius: 8px; padding: 2rem 1rem; margin-bottom: 2rem; background: #e3f2fd; transition: background 0.2s; position: relative;"
+        >
+            <div class="center-align" style="margin-bottom: 1rem; color: #1976d2;">
+                <b>Drag & drop an image here, or click "File" to select</b>
+            </div>
+            <form id="upload-form" class="col s12" method="POST" action="/" enctype="multipart/form-data" autocomplete="off">
+                <div class="row" style="margin-bottom: 0;">
+                    <div class="file-field input-field col s6">
+                        <div class="btn tooltipped" data-position="bottom" data-tooltip="Choose file" aria-label="Choose file">
+                            <i class="material-icons">attach_file</i>
+                            <input id="file-input" type="file" name="file" required>
+                        </div>
+                        <div class="file-path-wrapper">
+                            <input class="file-path validate" type="text" placeholder="Upload image">
+                        </div>
+                    </div>
+                    <div class="input-field col s4">
+                        <select name="lang" required>
+                            <option value="" disabled>Choose language</option>
+                            <option value="eng">English</option>
+                            <option value="jpn">Japanese</option>
+                            <option value="chi_sim" selected>Chinese (Simplified)</option>
+                            <option value="chi_tra">Chinese (Traditional)</option>
+                            <option value="kor">Korean</option>
+                        </select>
+                        <label>Language</label>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: center; margin-top: auto; position: absolute; bottom: 0.5rem; left: 50%; transform: translateX(-50%);">
+                    <button class="btn waves-effect waves-light tooltipped"
+                            type="submit"
+                            data-position="bottom"
+                            data-tooltip="Upload"
+                            aria-label="Upload"
+                            style="display: flex; flex-direction: row; align-items: center; justify-content: center; height: 40px; width: auto; padding: 0 1rem;">
+                        <i class="material-icons" style="font-size: 20px; margin-right: 0.5rem;">cloud_upload</i>
+                        <span>Upload</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Search form -->
+        <div class="row">
+            <form class="col s12" action="/search" method="GET" onsubmit="return false;">
+                <div class="input-field col s12">
+                    <input id="search" type="text" name="q" placeholder="Search OCR text...">
+                    <label for="search">Search</label>
+                </div>
+            </form>
+        </div>
+
+        <div class="right-align" style="margin-bottom: 1rem;">
+            <button id="icon-view-btn" class="btn-flat waves-effect active" onclick="showIconView()"><i class="material-icons">apps</i></button>
+            <button id="list-view-btn" class="btn-flat waves-effect" onclick="showListView()"><i class="material-icons">list</i></button>
+        </div>
+
+        <div class="divider"></div>
+        <h2 class="center-align">My Stickers</h2>
+
+        <section id="icon-view">
+            <div id="sticker-results" class="row">
+                {% for image in images %}
+                    <div class="col s12 m6 l4">
+                        <div class="card">
+                            <div class="card-image">
+                                <img src="{{ url_for('static', filename='uploads/' + image[0]) }}" onclick="openModal(this.src)" style="cursor:pointer;">
+                            </div>
+                            <div class="center-align" style="margin-top: 1rem;">
+                                <div class="action-btn-row">
+                                    <a href="/delete/{{ image[0] }}"
+                                       class="btn red waves-effect waves-light tooltipped"
+                                       data-position="bottom"
+                                       data-tooltip="Delete">
+                                        <i class="material-icons">delete</i>
+                                    </a>
+                                    <a href="/rescan/{{ image[0] }}"
+                                       class="btn yellow darken-2 waves-effect waves-light tooltipped"
+                                       data-position="bottom"
+                                       data-tooltip="Rescan">
+                                        <i class="material-icons">autorenew</i>
+                                    </a>
+                                    <button class="btn blue waves-effect waves-light tooltipped"
+                                            data-position="bottom"
+                                            data-tooltip="Copy"
+                                            onclick="copyImageToClipboard('{{ url_for('static', filename='uploads/' + image[0]) }}'); return false;">
+                                        <i class="material-icons">content_copy</i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <p>{{ image[1] | safe }}</p>
+                                <small>Language: {{ image[2] }}</small>
+                            </div>
+                            <div class="card-action">
+                                <small>
+                                    Uploaded at: <span data-timestamp="{{ image[3] }}"></span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="list-view" style="display:none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>OCR Text</th>
+                        <th>Language</th>
+                        <th>Uploaded At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for image in images %}
+                    <tr>
+                        <td>
+                            <img src="{{ url_for('static', filename='uploads/' + image[0]) }}" alt="Sticker thumbnail" onclick="openModal(this.src)" style="cursor:pointer;">
+                        </td>
+                        <td>{{ image[1] | safe }}</td>
+                        <td>{{ image[2] }}</td>
+                        <td><span data-timestamp="{{ image[3] }}"></span></td>
+                        <td>
+                            <div class="action-btn-row">
+                                <a href="/delete/{{ image[0] }}"
+                                   class="btn red waves-effect waves-light tooltipped"
+                                   data-position="bottom"
+                                   data-tooltip="Delete">
+                                    <i class="material-icons">delete</i>
+                                </a>
+                                <a href="/rescan/{{ image[0] }}"
+                                   class="btn yellow darken-2 waves-effect waves-light tooltipped"
+                                   data-position="bottom"
+                                   data-tooltip="Rescan">
+                                    <i class="material-icons">autorenew</i>
+                                </a>
+                                <button class="btn blue waves-effect waves-light tooltipped"
+                                        data-position="bottom"
+                                        data-tooltip="Copy"
+                                        onclick="copyImageToClipboard('{{ url_for('static', filename='uploads/' + image[0]) }}'); return false;">
+                                    <i class="material-icons">content_copy</i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <div id="image-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <button class="modal-close-button" aria-label="Close" onclick="closeModal(event)">&times;</button>
+            <img id="modal-image" src="" alt="Expanded sticker" style="width: 100%; height: auto; border-radius: 8px;">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        function showIconView() {
+            document.getElementById('icon-view').style.display = '';
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('icon-view-btn').classList.add('active');
+            document.getElementById('list-view-btn').classList.remove('active');
+        }
+        function showListView() {
+            document.getElementById('icon-view').style.display = 'none';
+            document.getElementById('list-view').style.display = '';
+            document.getElementById('icon-view-btn').classList.remove('active');
+            document.getElementById('list-view-btn').classList.add('active');
+        }
+
+        function openModal(src) {
+            const modal = document.getElementById('image-modal');
+            const modalImage = document.getElementById('modal-image');
+            modalImage.src = src;
+            modal.classList.add('show');
+        }
+
+        function closeModal(event) {
+            event.stopPropagation();
+            const modal = document.getElementById('image-modal');
+            if (event.target === modal || event.target.classList.contains('modal-close-button')) {
+                modal.classList.remove('show');
+                const modalImage = document.getElementById('modal-image');
+                modalImage.src = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('select');
+            M.FormSelect.init(elems);
+
+            // Initialize Materialize tooltips
+            var elemsTooltip = document.querySelectorAll('.tooltipped');
+            M.Tooltip.init(elemsTooltip);
+
+            const searchInput = document.getElementById('search');
+            const resultsContainer = document.getElementById('sticker-results');
+
+            searchInput.addEventListener('input', async function() {
+                const query = searchInput.value.trim();
+                try {
+                    const response = await fetch('/search?q=' + encodeURIComponent(query));
+                    if (response.ok) {
+                        const html = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newResults = doc.getElementById('sticker-results');
+                        if (newResults) {
+                            resultsContainer.innerHTML = newResults.innerHTML;
+                        } else {
+                            resultsContainer.innerHTML = '';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Search request failed', error);
+                }
+            });
+        });
+        async function copyImageToClipboard(url) {
+            try {
+                const response = await fetch(url, {mode: 'cors'});
+                const blob = await response.blob();
+                const data = [new ClipboardItem({ [blob.type]: blob })];
+                await navigator.clipboard.write(data);
+                M.toast({html: 'Image copied to clipboard!'});
+            } catch (err) {
+                M.toast({html: 'Failed to copy image'});
+            }
+        }
+        // Drag-and-drop for file upload
+        document.addEventListener('DOMContentLoaded', function() {
+            var dropZone = document.getElementById('drop-zone');
+            var fileInput = document.getElementById('file-input');
+            var uploadForm = document.getElementById('upload-form');
+            if (dropZone && fileInput && uploadForm) {
+                // Highlight drop zone on dragover
+                dropZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.background = "#bbdefb";
+                });
+                dropZone.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.background = "#e3f2fd";
+                });
+                dropZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.background = "#e3f2fd";
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        // Only accept the first file
+                        fileInput.files = e.dataTransfer.files;
+                        // Update Materialize file-path
+                        var filePathInput = dropZone.querySelector('.file-path');
+                        if (filePathInput) {
+                            filePathInput.value = e.dataTransfer.files[0].name;
+                            filePathInput.dispatchEvent(new Event('change'));
+                        }
+                        // Optionally auto-submit the form
+                        // uploadForm.submit();
+                    }
+                });
+            }
+        });
+    </script>
+    <script>
+        // Convert all timestamps to local time
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-timestamp]').forEach(function(el) {
+                var ts = el.getAttribute('data-timestamp');
+                if (ts) {
+                    // Parse SQLite UTC datetime string "YYYY-MM-DD HH:MM:SS"
+                    var parts = ts.split(' ');
+                    if (parts.length === 2) {
+                        var dateParts = parts[0].split('-');
+                        var timeParts = parts[1].split(':');
+                        if (dateParts.length === 3 && timeParts.length === 3) {
+                            var year = parseInt(dateParts[0], 10);
+                            var month = parseInt(dateParts[1], 10) - 1; // Month is zero-based
+                            var day = parseInt(dateParts[2], 10);
+                            var hour = parseInt(timeParts[0], 10);
+                            var minute = parseInt(timeParts[1], 10);
+                            var second = parseInt(timeParts[2], 10);
+                            var date = new Date(Date.UTC(year, month, day, hour, minute, second));
+                            el.textContent = date.toLocaleString();
+                            return;
+                        }
+                    }
+                    // fallback to raw value if parsing fails
+                    el.textContent = ts;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
